@@ -766,14 +766,41 @@ static int probe_ntfs(struct blkid_probe *probe,
 		if (attr_type == MFT_RECORD_ATTR_VOLUME_NAME) {
 			if (val_len > sizeof(label_str))
 				val_len = sizeof(label_str)-1;
-
+/* $_rbox_$_modify_$_huangyonglin: added for mass storage mounting  2012-03-31 */
+#if 0
 			for (i=0, cp=label_str; i < val_len; i+=2,cp++) {
 				val = ((__u8 *) attr) + val_off + i;
 				*cp = val[0];
 				if (val[1])
 					*cp = '?';
 			}
-			*cp = 0;
+#else
+            for (i=0, cp=label_str; i < val_len;i+=2,cp++) {
+                __u16 *pval = ((__u8 *) attr) + val_off + i;
+                __u16 val_temp= *pval;
+                 if (val_temp >= 0x00 && val_temp <= 0x7f)
+                 {
+    				val = ((__u8 *) attr) + val_off + i;                  
+                    *cp =val[0];
+                 }
+                 else if (val_temp >= 0x0080 && val_temp <= 0x07ff)
+                 {
+                    *cp =((val_temp >> 6) & 0x1F) | 0xC0;
+                    cp++;
+                     *cp =(val_temp & 0x3F) | 0x80; ;
+                 }
+                 else if (val_temp >= 0x0800 && val_temp <= 0xffff)
+                 {
+                    *cp = ((val_temp >> 12) & 0x0F) | 0xE0; //0xe0 | (val_temp >> 12);
+                    cp++;
+                    *cp =  ((val_temp >> 6) & 0x3F) | 0x80; //0x80 | (val_temp >> 6 & 0x00ff);
+                    cp++;
+                    *cp =  (val_temp & 0x3F) | 0x80;//0x80 | (val_temp & (0xff >> 2));                    
+                 }
+            }
+            *cp =0;
+#endif
+/*$_rbox_$_modify_$_end*/
 		}
 	}
 
